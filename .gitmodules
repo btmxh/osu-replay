@@ -1,0 +1,12 @@
+[submodule "external/glfw"]
+	path = external/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "external/openal-soft"]
+	path = external/openal-soft
+	url = https://github.com/kcat/openal-soft.git
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/ngoduyanh/stb.git
+[submodule "external/glad-46-core-allexts"]
+	path = external/glad-46-core-allexts
+	url = https://github.com/ngoduyanh/glad-46-core-allexts.git

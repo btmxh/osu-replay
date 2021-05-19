@@ -10,3 +10,6 @@
 [submodule "external/glad-46-core-allexts"]
 	path = external/glad-46-core-allexts
 	url = https://github.com/ngoduyanh/glad-46-core-allexts.git
+[submodule "external/glm"]
+	path = external/glm
+	url = https://github.com/g-truc/glm.git

@@ -63,11 +63,45 @@ class Result {
   bool HasValue() const { return init; }
   explicit operator bool() const { return init; }
 
+  // Return Result<int> if func(value) return void
   template <typename Func>
-  decltype(auto) Map(Func func) {
+  auto Map(Func func) -> Result<std::conditional_t<
+      std::is_same_v<decltype(func(std::declval<T>())), void>, int,
+      decltype(func(std::declval<T>()))>> {
     using RetType = decltype(func(value));
+    if constexpr (std::is_same_v<RetType, void>) {
+      if (init) {
+        return Result<int>(0);
+      } else {
+        return Result<int>(error);
+      }
+    } else {
+      if (init) {
+        return Result<RetType>(func(value));
+      } else {
+        return Result<RetType>(error);
+      }
+    }
+  }
+
+  template <typename V>
+  struct UnwrapResult {
+    using Type = void;
+  };
+
+  template <typename V>
+  struct UnwrapResult<Result<V>> {
+    using Type = V;
+  };
+
+  template <typename Func,
+            typename = std::enable_if_t<!std::is_same_v<
+                UnwrapResult<decltype(std::declval<Func>()(std::declval<T>()))>,
+                void>>>
+  auto FlatMap(Func func) -> decltype(std::declval<Func>()(std::declval<T>())) {
+    using RetType = decltype(std::declval<Func>()(std::declval<T>()));
     if (init) {
-      return RetType(func(value));
+      return func(value);
     } else {
       return RetType(error);
     }

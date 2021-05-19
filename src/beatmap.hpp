@@ -22,7 +22,7 @@ class Beatmap {
   template <typename T = std::string_view>
   Result<T> GetProperty(KeyValueSection section, const std::string_view& key) {
     auto string = GetPropertyString(section, key);
-    return string.Map(
+    return string.FlatMap(
         [](const std::string_view& str) { return ParseString<T>(str); });
   }
 

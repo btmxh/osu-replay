@@ -81,26 +81,71 @@ int main() {
       },
       nullptr);
   glEnable(GL_DEBUG_OUTPUT);
+  GLuint ffs = 131185;
+  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 1, &ffs, false);
 
   osrp::Texture texture;
   osrp::CreateTexture(texture, "res/magma/bg.jpg");
+
+  osrp::Texture cursor, cursorTrail;
+  osrp::CreateTexture(cursor, "res/skin/cursor.png");
+  osrp::CreateTexture(cursorTrail, "res/skin/cursortrail.png");
   if (GLAD_GL_ARB_bindless_texture) {
     texture.MakeResident();
+    cursor.MakeResident();
+    cursorTrail.MakeResident();
   }
 
+  auto frameBefore = replay.replayData.begin();
+  constexpr size_t TRAIL_FRAMES = 4;
+
   std::unique_ptr<osrp::UIRenderer> renderer = osrp::CreateUIRenderer(*ctx);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  timer->SetSpeed(1.5);
 
   while (!ctx->ShouldClose()) {
     ctx->BeginFrame();
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     renderer->BeginFrame();
 
-    renderer->Quad({100.0f, 100.0f}, {300.0f, 300.0f}, texture);
-    renderer->Quad({200.0f, 100.0f}, {300.0f, 300.0f}, texture);
-    renderer->Quad({100.0f, 300.0f}, {300.0f, 500.0f}, texture);
+    auto time = timer->GetTime();
+
+    while (frameBefore < replay.replayData.end() - 1) {
+      if (time * 1000.0 >= (frameBefore + 1)->time) {
+        ++frameBefore;
+      } else {
+        break;
+      }
+    }
+    if (frameBefore != replay.replayData.end() &&
+        time * 1000.0 >= frameBefore->time) {
+      size_t itr = 0;
+      const glm::vec2 off{30.0f, 30.0f};
+      for (auto it = frameBefore; it-- > replay.replayData.begin();) {
+        renderer->Quad(it->pos - off, it->pos + off, cursorTrail);
+        if (++itr >= TRAIL_FRAMES) {
+          break;
+        }
+      }
+
+      auto pos = frameBefore->pos;
+      if (frameBefore < replay.replayData.end() - 1) {
+        auto frameAfter = frameBefore + 1;
+        assert(frameAfter->time >= time * 1000.0);
+        float lerpFactor = (float)(time * 1000.0f - frameBefore->time) /
+                           (frameAfter->time - frameBefore->time);
+        std::cout << lerpFactor << std::endl;
+        pos =
+            frameBefore->pos * (1 - lerpFactor) + frameAfter->pos * lerpFactor;
+      }
+
+      renderer->Quad(pos - off, pos + off, cursor);
+    }
 
     renderer->EndFrame();
 

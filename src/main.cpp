@@ -8,6 +8,8 @@
 #include "ui_renderer.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "stb_image.h"
 
 int main() {
@@ -82,7 +84,8 @@ int main() {
       nullptr);
   glEnable(GL_DEBUG_OUTPUT);
   GLuint ffs = 131185;
-  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 1, &ffs, false);
+  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE,
+                        1, &ffs, false);
 
   osrp::Texture texture;
   osrp::CreateTexture(texture, "res/magma/bg.jpg");
@@ -107,6 +110,24 @@ int main() {
   timer->SetSpeed(1.5);
 
   while (!ctx->ShouldClose()) {
+    auto [w, h] = ctx->GetFramebufferSize();
+    float wscale = w / PLAYFIELD_WIDTH;
+    float hscale = h / PLAYFIELD_HEIGHT;
+    float scale = std::min(wscale, hscale);
+    float left = (PLAYFIELD_WIDTH - w / scale) * 0.5f;
+    float right = PLAYFIELD_WIDTH - left;
+    float top = (PLAYFIELD_HEIGHT - h / scale) * 0.5f;
+    float bottom = PLAYFIELD_HEIGHT - top;
+    glm::mat4 orthoMatrix = glm::ortho(left, right, bottom, top);
+    glm::mat4 uiOrthoMatrix =
+        glm::ortho(0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f);
+
+    glm::mat4 playfieldToUIMatrix = glm::inverse(uiOrthoMatrix) * orthoMatrix;
+    auto playfieldToUIVector = [&](const glm::vec2& pos) {
+      auto returnPos = playfieldToUIMatrix * glm::vec4(pos, 0.0f, 1.0f);
+      return glm::vec2(returnPos.x / returnPos.w, returnPos.y / returnPos.w);
+    };
+
     ctx->BeginFrame();
 
     glClear(GL_COLOR_BUFFER_BIT);
@@ -127,7 +148,8 @@ int main() {
       size_t itr = 0;
       const glm::vec2 off{30.0f, 30.0f};
       for (auto it = frameBefore; it-- > replay.replayData.begin();) {
-        renderer->Quad(it->pos - off, it->pos + off, cursorTrail);
+        auto pos = playfieldToUIVector(it->pos);
+        renderer->Quad(pos - off, pos + off, cursorTrail);
         if (++itr >= TRAIL_FRAMES) {
           break;
         }
@@ -143,6 +165,7 @@ int main() {
         pos =
             frameBefore->pos * (1 - lerpFactor) + frameAfter->pos * lerpFactor;
       }
+      pos = playfieldToUIVector(pos);
 
       renderer->Quad(pos - off, pos + off, cursor);
     }

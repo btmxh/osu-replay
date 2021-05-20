@@ -8,6 +8,7 @@
 namespace osrp {
 
 class AbstractTimer {
+ public:
   virtual double GetTime() const = 0;
   virtual double GetSpeed() const = 0;
   virtual void SetSpeed(double speed) = 0;
@@ -22,7 +23,7 @@ class Timer : public AbstractTimer {
 
   TimePoint GetRawTime() const { return rawTimer(); }
 
-  double GetTime() const { return diff(startTime, rawTimer()); }
+  double GetTime() const { return diff(startTime, rawTimer()) * speed; }
 
   double GetSpeed() const { return speed; }
   void SetSpeed(double speed) { this->speed = speed; }

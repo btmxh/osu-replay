@@ -40,7 +40,8 @@ std::unique_ptr<uint8_t[]> decompressLZMA(uint8_t* src, size_t src_size,
   throw std::runtime_error("An error occurred while decompressing LZMA data");
 }
 namespace osrp {
-Result<Replay::Frame> ParseFrame(const std::string_view& str) {
+Result<Replay::Frame> ParseFrame(const std::string_view& str,
+                                 int64_t& timeOffset) {
   Replay::Frame frame;
   int tokenIndex = 0;
   std::error_code err{};
@@ -56,16 +57,20 @@ Result<Replay::Frame> ParseFrame(const std::string_view& str) {
       case 0:
         PARSE(time);
       case 1:
-        PARSE(x);
+        PARSE(pos.x);
       case 2:
-        PARSE(y);
+        PARSE(pos.y);
       case 3:
         PARSE(keys);
     }
   });
-
-  return err == std::error_code() ? Result<Replay::Frame>(frame)
-                                  : Result<Replay::Frame>(err);
+  if (err == std::error_code()) {
+    frame.time += timeOffset;
+    timeOffset = frame.time;
+    return Result<Replay::Frame>(frame);
+  } else {
+    return Result<Replay::Frame>(err);
+  }
 }
 
 Replay::Replay(const fs::path& path) {
@@ -102,6 +107,7 @@ Replay::Replay(const fs::path& path) {
   std::string_view replayDataString(
       reinterpret_cast<char*>(decompressedData.get()), decompressedSize);
 
+  int64_t timeOffset = 0;
   Split(replayDataString, ',', [&](const std::string_view& str) {
     if (TrimWhitespace(str).size() <= 0) return;
     if (auto seedString = RemovePrefix(str, "-12345|0|0|");
@@ -116,7 +122,7 @@ Replay::Replay(const fs::path& path) {
                   << seedResult.Error().message() << std::endl;
       }
     } else {
-      if (auto frame = ParseFrame(str); frame.HasValue()) {
+      if (auto frame = ParseFrame(str, timeOffset); frame.HasValue()) {
         replayData.push_back(frame.Value());
       }
     }

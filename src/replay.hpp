@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 
@@ -12,7 +13,7 @@ namespace osrp {
 struct Replay {
  public:
   struct Frame {
-    float32_t x, y;
+    glm::vec2 pos;
     int64_t time;
     uint32_t keys;
   };
